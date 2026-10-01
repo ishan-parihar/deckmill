@@ -25,7 +25,7 @@
 - **MCP server** — integrate with Claude, Cursor, or any MCP client for AI-driven slide generation
 - **CLI** — scriptable, CI-friendly commands for batch generation
 - **Design system** — tokens, themes, archetypes, Google Fonts, CSS variables
-- **Export pipeline** — HTML → PNG via the embedded Blitz renderer (stylo + vello-cpu, no browser needed; 1080×1350, 1080×1080, 1080×1920, 1200×628, etc.)
+- **Export pipeline** — HTML → PNG via the embedded Blitz renderer (stylo + vello-cpu, no browser needed; 1080×1350, 1080×1080, 1080×1920, 1200×627, 1200×675, etc.)
 - **Validation** — pre-flight param checks, layout overflow detection, contrast auditing
 - **Session persistence** — `configure_design` tokens survive MCP restarts (`~/.deckmill/session_state.json`)
 
@@ -192,12 +192,29 @@ generate-slide(s) → render-carousel → export
 | `instagram_square` | 1:1 | 1080×1080 | Feed posts |
 | `instagram_story` | 9:16 | 1080×1920 | Stories/Reels |
 | `tiktok_vertical` | 9:16 | 1080×1920 | TikTok |
-| `linkedin_landscape` | 1.91:1 | 1200×628 | LinkedIn docs |
+| `linkedin_landscape` | 1.91:1 | 1200×627 | LinkedIn docs |
 | `twitter_card` | 16:9 | 1200×675 | Twitter/X |
+| `facebook_post` | 1.9:1 | 1200×630 | Facebook feed |
 | `presentation_16_9` | 16:9 | 1920×1080 | Slides |
 | `presentation_4_3` | 4:3 | 1024×768 | Slides |
 
 **PNG geometry fix (v0.2.0+):** All presets now render at exact target dimensions (no more 143px height deficit).
+
+**Preset dimensions are the export target (G-07).** Each preset's own width ×
+height is what `deckmill export --preset <name>` produces with no `--aspect-ratio`.
+An explicit `--aspect-ratio` re-derives dimensions from the ratio table
+(`1:1` → 1080×1080, `4:5` → 1080×1350, …), so:
+
+```bash
+deckmill export ./carousel.html --output-dir ./exports --preset linkedin_landscape
+#  → 1200×627 PNGs
+
+deckmill export ./carousel.html --output-dir ./exports --preset linkedin_landscape --aspect-ratio 1:1
+#  → 1080×1080 PNGs
+```
+
+`test_every_preset_exports_its_native_canvas_by_default` in `src/platforms.rs`
+pins this per preset, so a new preset cannot silently inherit the wrong canvas.
 
 ---
 

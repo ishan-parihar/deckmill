@@ -245,6 +245,20 @@ pub fn aspect_ratio_dimensions(ratio: &str) -> Option<AspectRatioSpec> {
     }
 }
 
+/// Resolve the export canvas for `platform`.
+///
+/// Two distinct concepts collide here, so keep them apart:
+///
+/// * `spec.width` × `spec.height` — the platform's NATIVE export canvas
+///   (`linkedin_landscape` = 1200×627, `twitter_card` = 1200×675).
+/// * `spec.default_aspect_ratio` — the ratio the 420×525 base composition is
+///   laid out in, exposed so callers can label/metadata the base, not so the
+///   export canvas inherits its dimensions.
+///
+/// A caller that asks for NO ratio wants the platform's own canvas; only an
+/// EXPLICIT ratio override re-derives dimensions from `aspect_ratio_dimensions`.
+/// Before this split, `linkedin_landscape` exported 1080×1350 and `twitter_card`
+/// 1080×1080 — both wrong for the preset that was named.
 pub fn resolve_canvas(
     platform: &str,
     aspect_ratio: Option<&str>,
@@ -257,9 +271,8 @@ pub fn resolve_canvas(
             valid.join(", ")
         )
     })?;
-    let ratio = aspect_ratio
-        .filter(|s| !s.trim().is_empty())
-        .unwrap_or(&spec.default_aspect_ratio);
+    let requested = aspect_ratio.map(str::trim).filter(|s| !s.is_empty());
+    let ratio = requested.unwrap_or(&spec.default_aspect_ratio);
 
     if !spec.allowed_aspect_ratios.iter().any(|r| r == ratio) {
         return Err(format!(
@@ -269,9 +282,14 @@ pub fn resolve_canvas(
         ));
     }
 
-    let (width, height, format) = aspect_ratio_dimensions(ratio)
-        .map(|spec| (spec.width, spec.height, spec.format))
-        .unwrap_or_else(|| (spec.width, spec.height, spec.format.clone()));
+    let (width, height, format) = match requested {
+        Some(r) => aspect_ratio_dimensions(r)
+            .map(|d| (d.width, d.height, d.format))
+            .unwrap_or((spec.width, spec.height, spec.format.clone())),
+        // No explicit ratio: the platform's native canvas wins. The base
+        // composition stays 4:5 either way — only the export target differs.
+        None => (spec.width, spec.height, spec.format.clone()),
+    };
 
     Ok(PlatformCanvas {
         platform: spec.name,
@@ -341,5 +359,51 @@ mod tests {
     fn test_resolve_canvas_rejects_invalid_ratio_for_platform() {
         let err = resolve_canvas("instagram_story", Some("16:9")).unwrap_err();
         assert!(err.contains("not allowed"));
+    }
+
+    /// G-07: every preset's no-argument export must be its OWN native canvas.
+    /// This is the drift guard — adding a preset with dimensions that a
+    /// `default_aspect_ratio` table would silently overwrite fails here.
+    #[test]
+    fn test_every_preset_exports_its_native_canvas_by_default() {
+        for spec in all_platforms() {
+            let canvas =
+                resolve_canvas(&spec.name, None).unwrap_or_else(|e| panic!("{}: {e}", spec.name));
+            assert_eq!(
+                (canvas.width, canvas.height),
+                (spec.width, spec.height),
+                "preset '{}' default export is {}x{}, expected its native {}x{}",
+                spec.name,
+                canvas.width,
+                canvas.height,
+                spec.width,
+                spec.height
+            );
+        }
+    }
+
+    #[test]
+    fn test_landscape_presets_export_native_dimensions() {
+        let li = resolve_canvas("linkedin_landscape", None).expect("linkedin default");
+        assert_eq!((li.width, li.height), (1200, 627));
+
+        let tw = resolve_canvas("twitter_card", None).expect("twitter default");
+        assert_eq!((tw.width, tw.height), (1200, 675));
+    }
+
+    /// An explicit ratio still re-derives dimensions (the override contract).
+    #[test]
+    fn test_explicit_ratio_still_overrides_native_dimensions() {
+        let li = resolve_canvas("linkedin_landscape", Some("1:1")).expect("linkedin 1:1");
+        assert_eq!((li.width, li.height), (1080, 1080));
+        assert_eq!(li.aspect_ratio, "1:1");
+    }
+
+    /// An empty/whitespace ratio is "no ratio" — must not fall through to the
+    /// ratio table and re-break the native canvas.
+    #[test]
+    fn test_blank_ratio_treated_as_absent() {
+        let tw = resolve_canvas("twitter_card", Some("   ")).expect("twitter blank ratio");
+        assert_eq!((tw.width, tw.height), (1200, 675));
     }
 }

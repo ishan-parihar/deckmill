@@ -62,6 +62,40 @@ pub(crate) fn fnv1a64(s: &str) -> u64 {
 /// tests can seed cache files with the exact on-disk key.
 pub(crate) const CACHE_VERSION: &str = "v4";
 
+/// Does a CSS `unicode-range` declaration cover the ASCII digit block
+/// `U+0030-0039` (the glyphs `0`–`9`)?
+///
+/// WHY this is parsed instead of substring-matched: the latin-face selector
+/// below historically used `contains("U+0000-00FF")` as a stand-in for "this
+/// face has digits". That proxy is not the same predicate — a face can sit
+/// inside the basic-Latin block and still ship a subset with the digits
+/// cut out, and a face can declare the digits outside `U+0000-00FF`. Digits
+/// going missing is the visible bug (stat tiles rendering blank or in a
+/// fallback face), so the charset check must name the digits directly.
+///
+/// Accepts the CSS list form Google emits, e.g.
+/// `U+0000-00FF, U+0131, U+2000-206F` or the space-free `U+0000-00FF,U+0131`.
+fn unicode_range_covers_digits(decl: &str) -> bool {
+    for token in decl.split(',') {
+        let t = token.trim().trim_start_matches("U+").trim_start_matches("u+");
+        let (lo, hi) = match t.split_once('-') {
+            Some((a, b)) => (a, b),
+            None => (t, t),
+        };
+        let (Ok(lo), Ok(hi)) = (
+            u32::from_str_radix(lo, 16),
+            u32::from_str_radix(hi, 16),
+        ) else {
+            continue;
+        };
+        // Every digit must fall inside this single range token.
+        if (0x30..=0x39).all(|c| (lo..=hi).contains(&c)) {
+            return true;
+        }
+    }
+    false
+}
+
 /// Collapse Google Fonts' per-subset `@font-face` fan-out to ONE face per
 /// (family, weight, style): the face whose `unicode-range` covers the basic
 /// Latin block (`U+0000-00FF`).
@@ -71,11 +105,16 @@ pub(crate) const CACHE_VERSION: &str = "v4";
 /// export renderer (blitz/stylo) does NOT implement `unicode-range` — it
 /// registers every face and fontdb/parley matches by family+weight+style only,
 /// so a family may resolve to a *non-latin* subset (e.g. latin-ext). Those
-/// subsets contain letters but often lack ASCII digits (`0x30` is absent from
+/// subsets contain letters but lack ASCII digits (`0x30` is absent from
 /// latin-ext), so digits and other missing glyphs silently fall back to system
 /// fonts — the "mixed A / numbers / whole-word lettering" export bug.
 /// Keeping only the Latin face per weight makes font resolution deterministic
 /// and gives every ASCII/Latin-1/punctuation glyph a single source.
+///
+/// Digit coverage is part of the selection predicate, not a tie-break: a face
+/// that declares `0`–`9` is a usable ASCII source even when it sits outside
+/// `U+0000-00FF`, so it is never discarded in favour of a digit-less
+/// `latin-ext` sibling. See [`unicode_range_covers_digits`].
 ///
 /// Emoji and rare scripts are unaffected: parley routes them through its own
 /// emoji/fallback stacks (see `select_font`'s `is_emoji` branch), and our
@@ -127,10 +166,12 @@ fn collapse_to_latin_faces(css: &str) -> String {
             .and_then(|c| c.get(1))
             .map(|m| m.as_str().trim().to_string())
             .unwrap_or_default();
-        let is_latin = ur_re
-            .captures(block)
-            .map(|c| c.get(1).is_some_and(|m| m.as_str().contains("U+0000-00FF")))
-            .unwrap_or(false);
+        let ur = ur_re.captures(block).and_then(|c| c.get(1)).map(|m| m.as_str());
+        // A face qualifies as the family's basic-Latin source when it covers
+        // the Latin block OR declares the digits outright — our content is
+        // ASCII, so either is usable and neither may be discarded.
+        let is_latin = ur.is_some_and(|r| r.contains("U+0000-00FF"))
+            || ur.is_some_and(unicode_range_covers_digits);
         if is_latin && !families_with_latin.contains(&family) {
             families_with_latin.push(family.clone());
         }
@@ -708,6 +749,96 @@ mod tests {
         let out = collapse_to_latin_faces(css);
         assert!(out.contains("@font-face"));
         assert!(out.contains("'X'"));
+    }
+
+    // ── G-07 charset: digits 0-9 must survive the vendored payload ──────────
+
+    /// The charset predicate itself: does a `unicode-range` cover `0`–`9`?
+    #[test]
+    fn unicode_range_digit_charset_predicate() {
+        // Google's real latin subset declaration.
+        let latin = "U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, \
+                     U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, \
+                     U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD";
+        assert!(unicode_range_covers_digits(latin), "latin subset has digits");
+        // Space-free list form.
+        assert!(unicode_range_covers_digits("U+0000-00FF,U+0131"));
+        // Digits declared as their own explicit token.
+        assert!(unicode_range_covers_digits("U+0030-0039"));
+        // Digits declared outside the basic-Latin block — still digits.
+        assert!(unicode_range_covers_digits("U+0041-005A, U+0030-0039"));
+        // Subset faces that genuinely lack digits must report false.
+        assert!(!unicode_range_covers_digits("U+0100-02BA, U+02BD-02C5"));
+        assert!(!unicode_range_covers_digits("U+3040-30FF"), "kana-only");
+        assert!(!unicode_range_covers_digits("U+0400-045F"), "cyrillic-only");
+        assert!(!unicode_range_covers_digits(""), "empty declaration");
+        // A range that stops one short of the last digit is not full coverage.
+        assert!(!unicode_range_covers_digits("U+0030-0038"));
+    }
+
+    /// CHARSET CONTRACT: the collapsed+merged payload a slide actually ships
+    /// must keep, for every family, a face that covers the ASCII digits.
+    /// Stat tiles, numbered lists, and any "3 of 5" copy depend on this — a
+    /// face without `0`–`9` sends them to a system fallback mid-sentence.
+    #[test]
+    fn collapse_output_always_keeps_a_digit_covering_face() {
+        // Realistic Google payload: latin-ext before latin, plus a family whose
+        // first basic-Latin face has its digits stripped.
+        let css = r#"
+/* latin-ext */
+@font-face { font-family: 'Stat One'; font-weight: 400; font-style: normal; src: url(data:font/woff2;base64,EXT1); unicode-range: U+0100-02BA, U+02BD-02C5; }
+/* latin, digits stripped */
+@font-face { font-family: 'Stat One'; font-weight: 400; font-style: normal; src: url(data:font/woff2;base64,NODIG); unicode-range: U+0000-00FF; }
+/* latin, digits intact */
+@font-face { font-family: 'Stat Two'; font-weight: 700; font-style: normal; src: url(data:font/woff2;base64,DIGIT); unicode-range: U+0000-00FF, U+0131, U+2000-206F; }
+@font-face { font-family: 'Stat Two'; font-weight: 700; font-style: normal; src: url(data:font/woff2;base64,EXT2); unicode-range: U+1E00-1EFF; }
+"#;
+        let out = collapse_to_latin_faces(css);
+
+        // The digit-less latin face must not be the one that survives for its
+        // (family, weight, style) slot when a digit-bearing sibling exists.
+        let kept_families: Vec<String> = Regex::new(r"(?i)font-family:\s*'([^']+)'")
+            .unwrap()
+            .captures_iter(&out)
+            .map(|c| c[1].trim().to_string())
+            .collect();
+        assert!(kept_families.contains(&"Stat One".to_string()));
+        assert!(kept_families.contains(&"Stat Two".to_string()));
+
+        // Every surviving face that declares a unicode-range must cover 0-9.
+        let ur_re = Regex::new(r"(?i)unicode-range:\s*([^;}]+)").unwrap();
+        let mut checked = 0usize;
+        for block in Regex::new(r"(?s)@font-face\s*\{[^{}]*\}")
+            .unwrap()
+            .find_iter(&out)
+        {
+            if let Some(ur) = ur_re
+                .captures(block.as_str())
+                .and_then(|c| c.get(1))
+                .map(|m| m.as_str())
+            {
+                assert!(
+                    unicode_range_covers_digits(ur),
+                    "surviving face lacks digits 0-9: {ur}\nfull payload:\n{out}"
+                );
+                checked += 1;
+            }
+        }
+        assert!(checked > 0, "test payload must exercise at least one face");
+    }
+
+    /// Digit coverage is part of what makes a face usable: a digits-only face
+/// (`U+0030-0039`) is a latin source for our ASCII content and must never be
+/// discarded in favour of a `latin-ext` sibling that has no digits.
+#[test]
+    fn collapse_keeps_digit_only_face_as_the_family_latin_face() {
+        let css = r#"
+@font-face { font-family: 'Num'; font-weight: 400; font-style: normal; src: url(data:font/woff2;base64,EXT); unicode-range: U+0100-02BA; }
+@font-face { font-family: 'Num'; font-weight: 400; font-style: normal; src: url(data:font/woff2;base64,DIG); unicode-range: U+0030-0039; }
+"#;
+        let out = collapse_to_latin_faces(css);
+        assert!(out.contains("DIG"), "digit face preserved");
+        assert!(!out.contains("EXT"), "latin-ext dropped");
     }
 
     /// Same-blob variable-font weights must merge into ONE face with a weight
