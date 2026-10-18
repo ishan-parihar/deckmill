@@ -7,13 +7,10 @@
 **High-performance slide carousel generator** — CLI + MCP server for creating professional Instagram/LinkedIn/TikTok carousels as HTML → PNG.
 
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org)
-![LOC](https://img.shields.io/badge/LOC-35.5K-informational?style=flat-square)
-![Status](https://img.shields.io/badge/Status-Active-brightgreen)
 [![CI](https://github.com/ishan-parihar/deckmill/actions/workflows/ci.yml/badge.svg)](https://github.com/ishan-parihar/deckmill/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![MCP](https://img.shields.io/badge/MCP-1.8.0-purple.svg)](https://modelcontextprotocol.io)
 [![Tests](https://img.shields.io/badge/tests-185%20passing-brightgreen.svg)](https://github.com/ishan-parihar/deckmill)
-[![Release](https://img.shields.io/github/v/release/ishan-parihar/deckmill)](https://github.com/ishan-parihar/deckmill/releases)
 
 </div>
 
