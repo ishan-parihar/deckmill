@@ -17,3 +17,4 @@ dist/*_test/compiled_*.json.tmp
 
 .claude/settings.json
 .codex/hooks.json
+.claude/
