@@ -4,6 +4,9 @@
 
 # Deckmill Rust
 
+
+- [Page index](docs/PAGE-INDEX.md) — every active doc and the question it owns.
+
 **High-performance slide carousel generator** — CLI + MCP server for creating professional Instagram/LinkedIn/TikTok carousels as HTML → PNG.
 
 [![Rust](https://img.shields.io/badge/rust-1.75+-orange.svg)](https://www.rust-lang.org)
