@@ -27,3 +27,5 @@
 | [`2026-07-02-litellm-proxy-setup-design.md`](superpowers/specs/2026-07-02-litellm-proxy-setup-design.md) | PLAN | LiteLLM Proxy Setup Design Specification | — |
 | [`2026-07-22-pool-based-preset-composition-design.md`](superpowers/specs/2026-07-22-pool-based-preset-composition-design.md) | PLAN | Design Spec: Pool-Based Preset Composition (Approach C) | — |
 | [`2026-07-23-dataviz-utilization-fix.md`](superpowers/specs/2026-07-23-dataviz-utilization-fix.md) | PLAN | Dataviz Slide Utilization Gap — Fix Plan | — |
+| [`2026-08-01-SLIDE_TYPE_AUDIT.md`](audit/2026-08-01-SLIDE_TYPE_AUDIT.md) | Slide Type Audit — Overflow Bugs + Redundancy Analysis — The dynamic-scaling formula at src/components.rs:5094-5102 underestimates real content height so badly that ev… |
+| [`2026-07-22-plan.md`](plans/2026-07-22-plan.md) | Implementation Plan: Pool-Based Preset Composition — Add pool-based composition mode to the preset system. Presets gain arcstructure + constraints fields alongside… |
