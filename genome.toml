@@ -40,3 +40,4 @@ mode = "immutable"         # or "amendable" (dated ## Amendment sections)
 
 [card]
 architecture = "docs/DESIGN-GUIDE.md"
+status_into = "docs/handoff/STATE.md"
