@@ -94,3 +94,5 @@ Always run the following commands to verify edits before committing:
 - **Recompile Release Binary:** `cargo build --release`
 - **Regenerate Test Carousels:** Run the local automation script `python3 generate_gender_studies_carousel.py` and inspect exported PNG sizes under `dist/gender_studies_exports/`.
 
+*(Commands reviewed 2026-10-19: the crate layout and the automation script are unchanged, so the list stands.)*
+
