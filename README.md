@@ -1,3 +1,8 @@
+---
+verified: "716dbdb"
+covers: "src/**"
+---
+
 <div align="center">
 
 <!-- T2I HERO SPEC — Subject: a slide forge — HTML slide components (typography blocks, charts, image cards, quote panels, OKLCH color swatches) being stamped into a carousel of PNG slides, fanning into Instagram/LinkedIn/TikTok phone frames; a WCAG-AA accessibility ring around the stack. Composition: left-to-right stamping line, phone frames on the right. Palette: forge ember #f97316 → deep slate #0f172a → brand gradient accents → WCAG green #34d399. Style: dark industrial flat vector, glowing stamps, no text. 16:9. -->
@@ -13,7 +18,7 @@
 [![CI](https://github.com/ishan-parihar/deckmill/actions/workflows/ci.yml/badge.svg)](https://github.com/ishan-parihar/deckmill/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![MCP](https://img.shields.io/badge/MCP-1.8.0-purple.svg)](https://modelcontextprotocol.io)
-[![Tests](https://img.shields.io/badge/tests-185%20passing-brightgreen.svg)](https://github.com/ishan-parihar/deckmill)
+[![Tests](https://img.shields.io/badge/tests-192%20passing-brightgreen.svg)](https://github.com/ishan-parihar/deckmill)
 
 </div>
 
@@ -21,7 +26,7 @@
 
 ## Features
 
-- **46 slide types** across 6 categories: Text & Layout, Data Viz, Metrics, Story, Image, Conversion
+- **38 active slide types** (46 registry keys; 8 are removed tombstones kept only for redirect notes) grouped by layout family: image, conversion, data, content, process, educational, story, strategy, hero, feature
 - **MCP server** — integrate with Claude, Cursor, or any MCP client for AI-driven slide generation
 - **CLI** — scriptable, CI-friendly commands for batch generation
 - **Design system** — tokens, themes, archetypes, Google Fonts, CSS variables
@@ -38,10 +43,10 @@
 | **Agent-native generation** | ✅ MCP server + CLI, AI-driven | ❌ GUI | ⚠️ scripted | ⚠️ |
 | **Render without a browser** | ✅ embedded Blitz (stylo + vello-cpu) | n/a | n/a | ❌ needs Chrome |
 | **Validation** | ✅ overflow detection + contrast (WCAG-AA) auditing | ⚠️ manual | ❌ | ❌ |
-| **Slide-type library** | ✅ 46 types / 6 categories, design tokens + themes | ✅ templates | ⚠️ | ⚠️ |
+| **Slide-type library** | ✅ 38 active types, design tokens + themes | ✅ templates | ⚠️ | ⚠️ |
 | **Deterministic output** | ✅ same HTML → same PNG | ⚠️ | ✅ | ⚠️ |
 | **Session design memory** | ✅ tokens persist across restarts | ✅ | ❌ | ❌ |
-| **Self-hosted binary** | ✅ single Rust binary, 185 tests | ❌ SaaS | ✅ | ✅ |
+| **Self-hosted binary** | ✅ single Rust binary, 192 tests | ❌ SaaS | ✅ | ✅ |
 
 Canva is a design *studio for humans*; Deckmill is a **deterministic slide factory for agents** — the same tokens, themes, and validation every run.
 
@@ -134,15 +139,29 @@ Configure in your MCP client (Claude Desktop, Cursor, etc.):
 
 ---
 
-## Slide Types (46 total)
+## Slide Types (38 active)
 
-| Category | Types |
+The registry holds 46 keys; 8 are removed tombstones kept only so old payloads get a redirect
+note instead of a hard error. `deckmill list-slides` prints all 46 with their status; the 38
+below are the ones the CLI's own active filter (`get_slide_type_info` + `layout_family`) keeps.
+
+| Layout family | Types |
 |----------|-------|
-| **Text & Layout** | hero, feature, list, quote, cta, comparison, stat_row, timeline, callout, split_features, grid_cards, definition, text_block, section_divider, text_columns |
-| **Data Visualization** | chart, scatter_plot, gauge, radar_chart, column_chart, table, metric_sparkline, funnel_chart, metric_grid, comparison_bars, progress_rings |
-| **Story** | problem_solution, myth_fact, case_study_result, testimonial_avatar, before_after_story, logo_cloud, pricing_plan, checklist_action_plan, faq, process_map |
-| **Image** | image_caption, image_headline, image_quote, image_callout, image_stat, image_gallery, image_collage, image_comparison |
-| **Conversion** | qr_destination |
+| **hero** | hero |
+| **image** | image_caption, image_headline, image_quote, image_callout, image_gallery, image_collage, image_comparison |
+| **conversion** | big_statement, comment_cta, pricing_plan, qr_destination |
+| **data** | chart, comparison\*, stat_row\* |
+| **content** | text_block, faq |
+| **educational** | definition, myth_fact |
+| **process** | process_map, timeline |
+| **story** | before_after_story, problem_solution, case_study_result, checklist_action_plan, logo_cloud, quote, split_features, testimonial_avatar |
+| **metrics** | metric_grid, gauge, comparison_bars, progress_rings, funnel_chart, radar_chart, scatter_plot, table, column_chart |
+
+\* deprecated aliases: `comparison` routes to `before_after_story`; `stat_row` routes to
+`metric_grid`. They still render but are not the canonical names.
+
+Removed tombstones (not listed above): feature, list, cta, callout, grid_cards, text_columns,
+image_stat, section_divider.
 
 Each type exposes `required_params`, `optional_params`, `variants`, and an `example` payload via `get_slide_type_info`.
 
@@ -236,7 +255,7 @@ Checks: overflow, contrast, descender clipping, squished components, distorted i
 
 The Blitz rendering engine (stylo layout + vello-cpu raster) is embedded in the binary — no Chromium subprocess, no browser download, no persistent browser pool. Measured against the legacy headless-Chrome build on the same 8-slide export workload:
 
-| Metric | Blitz (v0.4.0) | Legacy Chrome | Delta |
+| Metric | Blitz (v0.4.0, measured 2026-08-07) | Legacy Chrome | Delta |
 |--------|----------------|---------------|-------|
 | Peak RSS | **132 MB** | 599 MB | **4.5× less** |
 | Wall time | 13.3 s | 15.4 s | 1.2× faster |
@@ -310,9 +329,9 @@ At session start, Deckmill prints a compact dashboard:
 
 ```
 bin: ~/.local/bin/deckmill
-description: Instagram/LinkedIn/TikTok carousel generator — 46 slide types, 8 platform presets
+description: Instagram/LinkedIn/TikTok carousel generator — 38 active slide types, 9 platform presets
 
-slides[46]{type,description}:
+slides[38]{type,description}:
   hero,Opening hook with headline and subheadline
   ...
 
@@ -322,7 +341,7 @@ design_tokens:
   archetype: startup_pitch
 
 help[4]:
-  Run `deckmill list-slides` to see all 46 slide types
+  Run `deckmill list-slides` to see all 38 active slide types
   Run `deckmill generate-slide hero --params '{...}'` to create a slide
   Run `deckmill render-carousel slides.json --tokens-file tokens.json` to render
   Run `deckmill export carousel.html --output-dir ./exports` to export PNGs

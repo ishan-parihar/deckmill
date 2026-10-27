@@ -1,3 +1,8 @@
+---
+verified: "716dbdb"
+covers: "docs/**"
+---
+
 # Page index — every active doc, the question it owns
 
 | File | Status | Owns | Not for |
