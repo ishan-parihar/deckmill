@@ -722,7 +722,7 @@ checksum = "da220af51a1a335e9a930beaaef53d261e41ea9eecfb3d973a3ddae1a7284b9c"
 
 [[package]]
 name = "deckmill"
-version = "0.1.0"
+version = "0.6.0"
 dependencies = [
  "anyhow",
  "anyrender",
