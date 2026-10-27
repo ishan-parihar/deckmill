@@ -721,6 +721,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da220af51a1a335e9a930beaaef53d261e41ea9eecfb3d973a3ddae1a7284b9c"
 
 [[package]]
+name = "deckmill"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "anyrender",
+ "anyrender_vello_cpu",
+ "base64",
+ "blitz-dom",
+ "blitz-html",
+ "blitz-net",
+ "blitz-paint",
+ "blitz-traits",
+ "clap",
+ "indexmap",
+ "kurbo",
+ "palette",
+ "peniko",
+ "png 0.17.16",
+ "qrcode",
+ "rand 0.8.6",
+ "regex",
+ "reqwest",
+ "resvg",
+ "rmcp",
+ "schemars",
+ "serde",
+ "serde_json",
+ "tiny-skia",
+ "tokio",
+ "toon-helper",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "derive_more"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2989,41 +3024,6 @@ name = "slab"
 version = "0.4.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
-
-[[package]]
-name = "deckmill"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "anyrender",
- "anyrender_vello_cpu",
- "base64",
- "blitz-dom",
- "blitz-html",
- "blitz-net",
- "blitz-paint",
- "blitz-traits",
- "clap",
- "indexmap",
- "kurbo",
- "palette",
- "peniko",
- "png 0.17.16",
- "qrcode",
- "rand 0.8.6",
- "regex",
- "reqwest",
- "resvg",
- "rmcp",
- "schemars",
- "serde",
- "serde_json",
- "tiny-skia",
- "tokio",
- "toon-helper",
- "url",
- "uuid",
-]
 
 [[package]]
 name = "slotmap"
