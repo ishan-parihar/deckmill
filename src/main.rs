@@ -32,7 +32,7 @@ mod styling;
 mod validate;
 
 #[derive(Parser)]
-#[command(name = "deckmill", version = "0.1.0")]
+#[command(name = "deckmill", version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "Deckmill CLI & MCP Server", long_about = None)]
 // AXI §6: usage errors are redirected to stdout — force plain text so ANSI
 // codes captured for stderr never leak into agent-readable piped output.
